@@ -64,7 +64,6 @@ export function SuperDocEditor() {
         modules: {
           toolbar: {
             selector: "#superdoc-toolbar",
-            toolbarGroups: ["center"],
           },
         },
         pagination: true,
@@ -164,7 +163,7 @@ export function SuperDocEditor() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 ln-superdoc">
       <div className="relative overflow-hidden border-b border-slate-200 bg-white/90">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_60%)]" />
         <div className="relative max-w-6xl mx-auto px-6 py-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

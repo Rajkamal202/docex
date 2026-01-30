@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/server"
+import { createTemplatesAdminClient } from "@/lib/supabase/templates-server"
 import { NextResponse } from "next/server"
 import type { CreateProposalRequest } from "@/lib/supabase/types"
 
@@ -7,7 +7,7 @@ export const maxDuration = 30
 // GET /api/proposals - List all proposals
 export async function GET(request: Request) {
   try {
-    const supabase = createAdminClient()
+    const supabase = createTemplatesAdminClient()
 
     // Parse query params
     const { searchParams } = new URL(request.url)
@@ -66,7 +66,7 @@ export async function GET(request: Request) {
 // POST /api/proposals - Create a new proposal
 export async function POST(request: Request) {
   try {
-    const supabase = createAdminClient()
+    const supabase = createTemplatesAdminClient()
 
     const body: CreateProposalRequest = await request.json()
 

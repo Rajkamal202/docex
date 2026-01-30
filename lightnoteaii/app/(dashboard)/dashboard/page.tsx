@@ -255,7 +255,7 @@ const STATUS_COLORS = {
 }
 
 export default function DashboardPage() {
-  const { balance } = useCredits()
+  const { balance, tableMissing: creditsTableMissing } = useCredits()
   const {
     proposals = [],
     isLoading,
@@ -263,6 +263,7 @@ export default function DashboardPage() {
     getRecentProposals,
     getUpcomingDeadlines,
     getTopPerformers,
+    tableMissing: proposalsTableMissing,
   } = useProposals()
   const [selectedPeriod, setSelectedPeriod] = useState<"week" | "month" | "quarter">("month")
 
@@ -394,6 +395,7 @@ export default function DashboardPage() {
   }
 
   const hasData = proposals.length > 0
+  const needsSetup = creditsTableMissing || proposalsTableMissing
 
   return (
     <div className="min-h-screen dashboard-gradient-bg relative overflow-hidden">
@@ -407,6 +409,26 @@ export default function DashboardPage() {
       </div>
 
       <div className="relative z-10 p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+        {needsSetup && (
+          <div className="glass-panel-strong rounded-2xl p-5 border border-amber-200/60 bg-amber-50/60">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-amber-900">Database setup required</p>
+                <p className="text-xs text-amber-800 mt-1">
+                  Some dashboard sections can’t load because required tables are missing in Supabase.
+                  Run the SQL scripts in `lightnoteaii/scripts` to create `profiles`, `credits`,
+                  `credit_transactions`, and `proposals`.
+                </p>
+              </div>
+              <div className="text-xs text-amber-700">
+                Missing:{" "}
+                {[creditsTableMissing && "credits/credit_transactions", proposalsTableMissing && "proposals"]
+                  .filter(Boolean)
+                  .join(", ")}
+              </div>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>

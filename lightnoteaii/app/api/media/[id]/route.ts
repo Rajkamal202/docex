@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
 export const maxDuration = 30
@@ -7,7 +7,7 @@ export const maxDuration = 30
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const supabase = await createClient()
+    const supabase = await getSupabaseServerClient()
 
     const { data: asset, error } = await supabase.from("media_assets").select("*").eq("id", id).single()
 
@@ -34,7 +34,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const supabase = await createClient()
+    const supabase = await getSupabaseServerClient()
 
     // Get asset to find storage path
     const { data: asset, error: fetchError } = await supabase

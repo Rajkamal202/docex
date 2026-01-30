@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
+import { GoogleGenAI } from "@google/genai"
 
 const blockContentSchema = {
   type: "object",
@@ -29,8 +29,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+    const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
 
     const systemPrompt = `You are a professional proposal and document content writer. 
 Generate compelling, professional content for a ${blockType || "content"} section based on the user's description.
@@ -50,9 +49,11 @@ User request: ${prompt}
 
 Respond ONLY with valid JSON, no markdown or explanation.`
 
-    const result = await model.generateContent(systemPrompt)
-    const response = await result.response
-    const text = response.text()
+    const response = await genAI.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: systemPrompt,
+    })
+    const text = typeof response.text === "function" ? response.text() : response.text
 
     // Parse JSON from response, handling potential markdown code blocks
     let jsonText = text.trim()

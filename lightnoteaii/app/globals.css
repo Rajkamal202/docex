@@ -489,3 +489,21 @@
 .animate-fifth {
   animation: moveInCircle 20s ease infinite;
 }
+
+/* SuperDoc: ensure document text is visible without affecting layout */
+.ln-superdoc .superdoc .ProseMirror {
+  color: #111111;
+}
+
+.ln-superdoc .superdoc .ProseMirror * {
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+}
+
+.ln-superdoc .superdoc,
+.ln-superdoc .super-editor,
+.ln-superdoc .super-editor-container,
+.ln-superdoc .super-editor .ProseMirror {
+  color: #111111;
+  color-scheme: light;
+}

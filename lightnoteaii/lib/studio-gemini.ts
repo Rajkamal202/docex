@@ -1,26 +1,98 @@
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai"
+import { GoogleGenAI } from "@google/genai"
 import { SYSTEM_PROMPTS, OUTPUT_SCHEMAS, VALIDATION, INDUSTRY_PROMPTS } from "./prompts"
 
 // Initialize Gemini client
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "")
+const genAI = new GoogleGenAI({ apiKey: process.env.LN_GEMINI_API_KEY || "" })
 
 // Safety settings for business content
 const safetySettings = [
-  { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-  { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+  { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+  { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+  { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+  { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
 ]
 
-const modelConfig = {
-  model: "gemini-2.0-flash",
-  generationConfig: {
-    temperature: 0.7,
-    topP: 0.9,
-    topK: 40,
-    maxOutputTokens: 8192,
-  },
-  safetySettings,
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3-flash-preview"
+const FALLBACK_MODELS = (process.env.GEMINI_FALLBACK_MODELS || "")
+  .split(",")
+  .map((m) => m.trim())
+  .filter(Boolean)
+const MAX_RETRIES = Number(process.env.GEMINI_MAX_RETRIES || 2)
+const INITIAL_BACKOFF_MS = Number(process.env.GEMINI_RETRY_BACKOFF_MS || 800)
+
+const generationConfig = {
+  temperature: 0.7,
+  topP: 0.9,
+  topK: 40,
+  maxOutputTokens: 8192,
+}
+
+function buildModelConfig(modelName: string) {
+  return {
+    model: modelName,
+    config: {
+      ...generationConfig,
+      safetySettings,
+    },
+  }
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function getErrorStatus(error: unknown): number | undefined {
+  if (error && typeof error === "object") {
+    const status = (error as { status?: number }).status
+    if (typeof status === "number") return status
+  }
+  const message =
+    typeof error === "string" ? error : (error as { message?: string } | undefined)?.message
+  if (typeof message === "string") {
+    const match = message.match(/\b(429|503|500)\b/)
+    if (match) return Number(match[1])
+  }
+  return undefined
+}
+
+function isRetryableError(error: unknown): boolean {
+  const status = getErrorStatus(error)
+  if (status === 429 || status === 503) return true
+  const message =
+    typeof error === "string" ? error : (error as { message?: string } | undefined)?.message
+  return Boolean(
+    message && /overloaded|resource exhausted|too many requests|rate limit/i.test(message),
+  )
+}
+
+async function generateTextWithRetry(input: any): Promise<string> {
+  const modelCandidates = [DEFAULT_MODEL, ...FALLBACK_MODELS].filter(
+    (m, i, arr) => m && arr.indexOf(m) === i,
+  )
+
+  let lastError: unknown
+  for (const modelName of modelCandidates) {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const response = await genAI.models.generateContent({
+          ...buildModelConfig(modelName),
+          contents: input,
+        })
+        const text = typeof response.text === "function" ? response.text() : response.text
+        return text || ""
+      } catch (error) {
+        lastError = error
+        if (!isRetryableError(error) || attempt === MAX_RETRIES) {
+          break
+        }
+        const backoff = INITIAL_BACKOFF_MS * Math.pow(2, attempt)
+        const jitter = Math.floor(Math.random() * 150)
+        await sleep(backoff + jitter)
+      }
+    }
+  }
+
+  throw lastError
 }
 
 export interface AnalysisResult {
@@ -105,8 +177,6 @@ export async function analyzeProposal(
   industry = "general",
   goals?: { clarity?: boolean; persuasion?: boolean; readability?: boolean; legalRisk?: boolean },
 ): Promise<AnalysisResult> {
-  const model = genAI.getGenerativeModel(modelConfig)
-
   // Build goals string
   const activeGoals =
     Object.entries(goals || {})
@@ -135,9 +205,7 @@ ${OUTPUT_SCHEMAS.analysis}
 
 Important: Return ONLY the JSON object, nothing else.`
 
-  const result = await model.generateContent(prompt)
-  const response = await result.response
-  const text = response.text()
+  const text = await generateTextWithRetry(prompt)
 
   // Parse JSON from response - handle potential markdown code blocks
   let jsonText = text.trim()
@@ -219,8 +287,6 @@ export async function rewriteProposal(
   tone: string,
   issues: Array<{ title: string; description: string; type?: string }>,
 ): Promise<string> {
-  const model = genAI.getGenerativeModel(modelConfig)
-
   // Format issues by priority
   const criticalIssues = issues.filter((i) => i.type === "critical")
   const warningIssues = issues.filter((i) => i.type === "warning")
@@ -259,9 +325,7 @@ IMPORTANT FORMATTING RULES:
 
 Return ONLY the improved proposal text, no explanations or commentary.`
 
-  const result = await model.generateContent(prompt)
-  const response = await result.response
-  const rawText = response.text().trim()
+  const rawText = (await generateTextWithRetry(prompt)).trim()
 
   return stripMarkdown(rawText)
 }
@@ -295,8 +359,6 @@ function stripMarkdown(text: string): string {
  * Generate a comparison between original and improved versions
  */
 export async function generateImprovements(original: string, improved: string): Promise<ImprovementResult> {
-  const model = genAI.getGenerativeModel(modelConfig)
-
   const prompt = `${SYSTEM_PROMPTS.comparison}
 
 ORIGINAL VERSION:
@@ -314,9 +376,7 @@ ${OUTPUT_SCHEMAS.improvements}
 
 Important: Return ONLY the JSON object, nothing else.`
 
-  const result = await model.generateContent(prompt)
-  const response = await result.response
-  const text = response.text()
+  const text = await generateTextWithRetry(prompt)
 
   // Parse JSON
   let jsonText = text.trim()
@@ -352,8 +412,6 @@ export async function generateSection(
   },
   tone: string,
 ): Promise<string> {
-  const model = genAI.getGenerativeModel(modelConfig)
-
   const prompt = `You are an expert proposal writer. Generate content for a ${sectionType} section.
 
 Context:
@@ -369,7 +427,6 @@ IMPORTANT: Return ONLY plain text. Do NOT use any markdown formatting like aster
 
 Return ONLY the section content, no headers or formatting instructions.`
 
-  const result = await model.generateContent(prompt)
-  const response = await result.response
-  return stripMarkdown(response.text().trim())
+  const text = await generateTextWithRetry(prompt)
+  return stripMarkdown(text.trim())
 }

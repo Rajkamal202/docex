@@ -37,6 +37,8 @@ interface ProposalState {
   proposals: Proposal[]
   isLoading: boolean
   userId: string | null
+  tableMissing: boolean
+  error: string | null
 }
 
 interface ProposalContextType extends ProposalState {
@@ -88,6 +90,8 @@ export function ProposalProvider({ children }: { children: ReactNode }) {
     proposals: [],
     isLoading: true,
     userId: null,
+    tableMissing: false,
+    error: null,
   })
 
   const mounted = useRef(false)
@@ -155,12 +159,20 @@ export function ProposalProvider({ children }: { children: ReactNode }) {
       const proposals: Proposal[] = (data || []).map(mapDbRowToProposal)
 
       if (mounted.current) {
-        setState({ proposals, isLoading: false, userId: user.id })
+        setState({ proposals, isLoading: false, userId: user.id, tableMissing: false, error: null })
       }
     } catch (error) {
       console.error("Error fetching proposals:", error)
       if (mounted.current) {
-        setState((prev) => ({ ...prev, isLoading: false }))
+        const message = error instanceof Error ? error.message : String(error)
+        const tableMissing =
+          message.includes("PGRST205") || message.includes("Could not find the table") || message.includes("proposals")
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          tableMissing,
+          error: message,
+        }))
       }
     } finally {
       fetchInProgress.current = false

@@ -2,7 +2,6 @@
 
 import { useState, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Header } from "./header"
 import { SubHeader } from "./sub-header"
 import { ProposalInput } from "./proposal-input"
 import { AnalysisPanel } from "./analysis-panel"
@@ -279,7 +278,6 @@ export function AIProposalStudio() {
           loop={true}
         />
 
-        <Header />
         <SubHeader activeTab="improve" />
 
         <main className="px-6 pb-16">

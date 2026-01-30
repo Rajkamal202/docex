@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/server"
+import { createTemplatesAdminClient } from "@/lib/supabase/templates-server"
 import { NextResponse } from "next/server"
 import type { UpdateProposalRequest } from "@/lib/supabase/types"
 
@@ -9,7 +9,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params
 
-    const supabase = createAdminClient()
+    const supabase = createTemplatesAdminClient()
 
     const { data: proposal, error } = await supabase.from("proposals").select("*").eq("id", id).single()
 
@@ -30,7 +30,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 }
 
 async function updateWithRetry(
-  supabase: ReturnType<typeof createAdminClient>,
+  supabase: ReturnType<typeof createTemplatesAdminClient>,
   id: string,
   body: UpdateProposalRequest,
   retries = 3,
@@ -72,7 +72,7 @@ async function updateWithRetry(
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const supabase = createAdminClient()
+    const supabase = createTemplatesAdminClient()
 
     const body: UpdateProposalRequest = await request.json()
 
@@ -98,7 +98,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const supabase = createAdminClient()
+    const supabase = createTemplatesAdminClient()
 
     const { error } = await supabase.from("proposals").delete().eq("id", id)
 

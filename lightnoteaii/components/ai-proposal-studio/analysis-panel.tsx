@@ -106,7 +106,7 @@ export function AnalysisPanel({ analysis, isImproving, onImprove, onReset, propo
       className="space-y-4"
     >
       {/* Tab Navigation */}
-      <div className="bg-white rounded-xl border border-slate-200 p-1.5 flex gap-1">
+      <div className="bg-slate-100/80 rounded-2xl border border-slate-200/70 p-1.5 flex gap-1">
         {tabs.map((tab) => {
           const Icon = tab.icon
           return (
@@ -114,10 +114,10 @@ export function AnalysisPanel({ analysis, isImproving, onImprove, onReset, propo
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                "flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors",
                 activeTab === tab.id
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:bg-white/70"
               )}
             >
               <Icon className="h-4 w-4" />
@@ -130,7 +130,7 @@ export function AnalysisPanel({ analysis, isImproving, onImprove, onReset, propo
       {activeTab === "overview" && (
         <>
           {/* Score Overview */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="bg-white rounded-2xl border border-slate-200/70 p-6 shadow-sm">
             <div className="flex items-start justify-between mb-6">
               <div>
                 <p className="text-xs text-slate-500 mb-1">Overall Score</p>
@@ -177,7 +177,7 @@ export function AnalysisPanel({ analysis, isImproving, onImprove, onReset, propo
 
           {/* Strengths */}
           {analysis.strengths.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <div className="bg-white rounded-2xl border border-slate-200/70 p-6 shadow-sm">
               <h3 className="text-sm font-medium text-slate-900 mb-3">Strengths</h3>
               <div className="flex flex-wrap gap-2">
                 {analysis.strengths.map((strength, i) => (
@@ -191,7 +191,7 @@ export function AnalysisPanel({ analysis, isImproving, onImprove, onReset, propo
 
           {/* Issues */}
           {analysis.issues.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <div className="bg-white rounded-2xl border border-slate-200/70 p-6 shadow-sm">
               <h3 className="text-sm font-medium text-slate-900 mb-3">Issues Found</h3>
               <div className="divide-y divide-slate-100">
                 {analysis.issues.map((issue) => (
@@ -203,7 +203,7 @@ export function AnalysisPanel({ analysis, isImproving, onImprove, onReset, propo
 
           {/* Recommendations */}
           {analysis.recommendations.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <div className="bg-white rounded-2xl border border-slate-200/70 p-6 shadow-sm">
               <h3 className="text-sm font-medium text-slate-900 mb-3">Recommendations</h3>
               <div className="space-y-2">
                 {analysis.recommendations.map((rec, i) => (
@@ -224,7 +224,7 @@ export function AnalysisPanel({ analysis, isImproving, onImprove, onReset, propo
       )}
       
       {activeTab === "readability" && !analysis.readabilityMetrics && (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+        <div className="bg-white rounded-2xl border border-slate-200/70 p-12 text-center shadow-sm">
           <BarChart3 className="h-12 w-12 text-slate-300 mx-auto mb-4" />
           <h4 className="text-lg font-medium text-slate-700 mb-2">Readability Analysis</h4>
           <p className="text-sm text-slate-500">Detailed readability metrics will appear here after analysis.</p>
@@ -237,7 +237,7 @@ export function AnalysisPanel({ analysis, isImproving, onImprove, onReset, propo
       )}
       
       {activeTab === "heatmap" && !proposalText && (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+        <div className="bg-white rounded-2xl border border-slate-200/70 p-12 text-center shadow-sm">
           <Layers className="h-12 w-12 text-slate-300 mx-auto mb-4" />
           <h4 className="text-lg font-medium text-slate-700 mb-2">Sentence Heatmap</h4>
           <p className="text-sm text-slate-500">Visual sentence analysis will appear here.</p>
@@ -250,7 +250,7 @@ export function AnalysisPanel({ analysis, isImproving, onImprove, onReset, propo
       )}
       
       {activeTab === "sections" && !analysis.sections && (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+        <div className="bg-white rounded-2xl border border-slate-200/70 p-12 text-center shadow-sm">
           <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
           <h4 className="text-lg font-medium text-slate-700 mb-2">Section Analysis</h4>
           <p className="text-sm text-slate-500">Detailed section breakdown will appear here after analysis.</p>
@@ -270,7 +270,7 @@ export function AnalysisPanel({ analysis, isImproving, onImprove, onReset, propo
       )}
       
       {activeTab === "benchmark" && !analysis.benchmark && (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+        <div className="bg-white rounded-2xl border border-slate-200/70 p-12 text-center shadow-sm">
           <TrendingUp className="h-12 w-12 text-slate-300 mx-auto mb-4" />
           <h4 className="text-lg font-medium text-slate-700 mb-2">Industry Benchmark</h4>
           <p className="text-sm text-slate-500">Compare your proposal to industry standards after analysis.</p>
@@ -278,7 +278,7 @@ export function AnalysisPanel({ analysis, isImproving, onImprove, onReset, propo
       )}
 
       {/* Actions */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
+      <div className="bg-white rounded-2xl border border-slate-200/70 p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium text-slate-900">Ready to improve?</h3>

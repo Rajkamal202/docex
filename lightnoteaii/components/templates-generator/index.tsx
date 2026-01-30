@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { TemplatesHeader } from "./templates-header"
 import { TemplatesSubHeader } from "./templates-sub-header"
 import { TemplatesContent } from "./templates-content"
 import { TemplatesFooter } from "./templates-footer"
@@ -27,7 +26,6 @@ export function TemplatesPage() {
         size="80%"
       >
       <div className="min-h-screen flex flex-col">
-        <TemplatesHeader />
         <TemplatesSubHeader />
 
         <main className="flex-1">

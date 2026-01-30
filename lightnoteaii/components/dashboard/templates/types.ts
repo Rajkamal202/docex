@@ -8,6 +8,8 @@ export interface TemplateProps {
     clientEmail: string
     industry: string
     problem: string
+    summary?: string
+    solution?: string
     deliverables: string
     timeline: string
     budget: string
@@ -15,6 +17,9 @@ export interface TemplateProps {
     uniqueValue: string
     logo: string
     images: string[]
+    preparedBy?: string
+    preparedByEmail?: string
+    proposalPages?: number
   }
   safeBranding: {
     companyName: string

@@ -10,14 +10,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Prompt is required" }, { status: 400 })
     }
 
-    // Check for required environment variables
-    const projectId = process.env.GCP_PROJECT_ID
-    const clientEmail = process.env.GCP_CLIENT_EMAIL
-    const privateKey = process.env.GCP_PRIVATE_KEY?.replace(/\\n/g, "\n")
+    const projectId = process.env.LN_GCP_PROJECT_ID
+    const clientEmail = process.env.LN_GCP_CLIENT_EMAIL
+    const privateKey = process.env.LN_GCP_PRIVATE_KEY?.replace(/\\n/g, "\n")
 
     if (!projectId || !clientEmail || !privateKey) {
       console.error("[AI Generate Image] Missing GCP credentials")
-      // Return a placeholder image instead of error
       return NextResponse.json({
         success: true,
         image: {
@@ -33,7 +31,6 @@ export async function POST(req: Request) {
     const enhancedPrompt = `Professional corporate business image: ${prompt}. High quality, clean, modern, suitable for business presentations and proposals.`
 
     try {
-      // Initialize Google Auth with service account credentials
       const auth = new GoogleAuth({
         credentials: {
           client_email: clientEmail,
@@ -43,7 +40,6 @@ export async function POST(req: Request) {
         scopes: ["https://www.googleapis.com/auth/cloud-platform"],
       })
 
-      // Get access token
       const client = await auth.getClient()
       const accessToken = await client.getAccessToken()
 
@@ -93,8 +89,6 @@ export async function POST(req: Request) {
           const mimeType = prediction.mimeType || "image/png"
           const dataUrl = `data:${mimeType};base64,${base64Image}`
 
-          
-
           return NextResponse.json({
             success: true,
             image: {
@@ -113,7 +107,6 @@ export async function POST(req: Request) {
     } catch (apiError) {
       console.error("[AI Generate Image] API Error:", apiError)
 
-      // Fallback to placeholder
       const cleanPrompt = prompt.replace(/[^a-zA-Z0-9 ]/g, "").trim()
       const searchTerms = encodeURIComponent(cleanPrompt)
 
@@ -131,7 +124,6 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("[AI Generate Image] Error:", error)
 
-    // Always return valid JSON
     return NextResponse.json(
       {
         success: false,

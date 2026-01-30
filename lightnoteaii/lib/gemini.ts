@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
+import { GoogleGenAI } from "@google/genai"
 
 const getApiKeys = () =>
   [
@@ -9,20 +9,20 @@ const getApiKeys = () =>
     process.env.GOOGLE_GENERATIVE_AI_API_KEY_5 || "",
   ].filter(Boolean)
 
-const MODEL_NAME = "gemini-2.0-flash"
+const MODEL_NAME = "gemini-3-flash-preview"
 
 let currentKeyIndex = 0
 const exhaustedKeys: Map<number, number> = new Map()
 
-function getGenAI(): GoogleGenerativeAI | null {
+function getGenAI(): GoogleGenAI | null {
   const API_KEYS = getApiKeys()
   if (API_KEYS.length === 0) {
     return null
   }
-  return new GoogleGenerativeAI(API_KEYS[currentKeyIndex])
+  return new GoogleGenAI({ apiKey: API_KEYS[currentKeyIndex] })
 }
 
-function requireGenAI(): GoogleGenerativeAI {
+function requireGenAI(): GoogleGenAI {
   const genAI = getGenAI()
   if (!genAI) {
     throw new Error(
@@ -125,17 +125,17 @@ export async function generateWithRetry(
   for (let attempt = 0; attempt < maxRetries * Math.max(API_KEYS.length, 1); attempt++) {
     try {
       const genAI = requireGenAI()
-      const model = genAI.getGenerativeModel({
+      const response = await genAI.models.generateContent({
         model: MODEL_NAME,
-        generationConfig: jsonMode
+        contents: prompt,
+        config: jsonMode
           ? {
               responseMimeType: "application/json",
             }
           : undefined,
       })
-
-      const result = await model.generateContent(prompt)
-      return result.response.text()
+      const text = typeof response.text === "function" ? response.text() : response.text
+      return text || ""
     } catch (error: unknown) {
       lastError = error as Error
       const errorMessage = (error as Error).message || ""
@@ -195,15 +195,14 @@ export async function generateWithSchema<T>(
   for (let attempt = 0; attempt < maxRetries * Math.max(API_KEYS.length, 1); attempt++) {
     try {
       const genAI = requireGenAI()
-      const model = genAI.getGenerativeModel({
+      const response = await genAI.models.generateContent({
         model: MODEL_NAME,
-        generationConfig: {
+        contents: prompt,
+        config: {
           responseMimeType: "application/json",
         },
       })
-
-      const result = await model.generateContent(prompt)
-      const text = result.response.text()
+      const text = typeof response.text === "function" ? response.text() : response.text
       return parseResponse(text)
     } catch (error: unknown) {
       lastError = error as Error
@@ -256,15 +255,15 @@ export async function generateTextContent(
   for (let attempt = 0; attempt < maxRetries * Math.max(API_KEYS.length, 1); attempt++) {
     try {
       const genAI = requireGenAI()
-      const model = genAI.getGenerativeModel({
+      const response = await genAI.models.generateContent({
         model: MODEL_NAME,
-        generationConfig: {
+        contents: prompt,
+        config: {
           maxOutputTokens: maxTokens,
         },
       })
-
-      const result = await model.generateContent(prompt)
-      return result.response.text()
+      const text = typeof response.text === "function" ? response.text() : response.text
+      return text || ""
     } catch (error: unknown) {
       lastError = error as Error
       const errorMessage = (error as Error).message || ""

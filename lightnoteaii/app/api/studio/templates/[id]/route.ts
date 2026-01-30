@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createTemplatesAdminClient } from "@/lib/supabase/templates-server"
 import { NextResponse } from "next/server"
 import type { UpdateTemplateRequest } from "@/lib/supabase/types"
 
@@ -8,7 +8,7 @@ export const maxDuration = 30
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     const { id } = params
-    const supabase = await createClient()
+    const supabase = createTemplatesAdminClient()
 
     // Fetch template
     const { data: template, error } = await supabase.from("templates").select("*").eq("id", id).single()
@@ -34,7 +34,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
     const { id } = params
-    const supabase = await createClient()
+    const supabase = createTemplatesAdminClient()
 
     const body: UpdateTemplateRequest = await request.json()
 
@@ -69,7 +69,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
     const { id } = params
-    const supabase = await createClient()
+    const supabase = createTemplatesAdminClient()
 
     // Delete template
     const { error } = await supabase.from("templates").delete().eq("id", id)

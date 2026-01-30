@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createTemplatesAdminClient } from "@/lib/supabase/templates-server"
 import { NextResponse } from "next/server"
 import type { CreateTemplateRequest } from "@/lib/supabase/types"
 
@@ -7,7 +7,7 @@ export const maxDuration = 30
 // GET /api/templates - List all templates
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient()
+    const supabase = createTemplatesAdminClient()
 
     // Parse query params
     const { searchParams } = new URL(request.url)
@@ -62,7 +62,7 @@ export async function GET(request: Request) {
 // POST /api/templates - Create a new template
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
+    const supabase = createTemplatesAdminClient()
 
     const body: CreateTemplateRequest = await request.json()
 

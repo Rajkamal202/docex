@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { generateSection } from "@/lib/gemini"
+import { generateSection } from "@/lib/studio-gemini"
 import { VALIDATION } from "@/lib/prompts"
 
 export const maxDuration = 30

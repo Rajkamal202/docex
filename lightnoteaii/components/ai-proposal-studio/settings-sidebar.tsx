@@ -79,7 +79,7 @@ export function SettingsSidebar({
   const selectedIndustryOption = industryOptions.find(i => i.value === selectedIndustry) || industryOptions[0]
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 sticky top-24">
+    <div className="bg-white rounded-2xl border border-slate-200/70 p-6 sticky top-24 shadow-sm">
       {/* Header */}
       <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-100">
         <h3 className="text-sm font-medium text-slate-900">Analysis Settings</h3>
@@ -99,7 +99,7 @@ export function SettingsSidebar({
         <div className="relative">
           <button
             onClick={() => setShowIndustryDropdown(!showIndustryDropdown)}
-            className="w-full flex items-center justify-between py-2.5 px-3 text-sm rounded-lg border border-slate-200 hover:border-slate-300 transition-all"
+            className="w-full flex items-center justify-between py-2.5 px-3 text-sm rounded-xl border border-slate-200 hover:border-slate-300 transition-all"
           >
             <div className="flex flex-col items-start">
               <span className="font-medium text-slate-900">{selectedIndustryOption.label}</span>
@@ -109,7 +109,7 @@ export function SettingsSidebar({
           </button>
           
           {showIndustryDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 py-1 max-h-64 overflow-y-auto">
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-10 py-1 max-h-64 overflow-y-auto">
               {industryOptions.map((industry) => (
                 <button
                   key={industry.value}
@@ -140,7 +140,7 @@ export function SettingsSidebar({
               <button
                 key={tone.value}
                 onClick={() => onToneChange(tone.value as typeof selectedTone)}
-                className={`w-full flex items-center justify-between py-2.5 px-3 text-sm rounded-lg border transition-all ${
+                className={`w-full flex items-center justify-between py-2.5 px-3 text-sm rounded-xl border transition-all ${
                   isSelected 
                     ? "border-slate-900 bg-slate-900 text-white" 
                     : "border-slate-200 text-slate-700 hover:border-slate-300"
@@ -164,7 +164,7 @@ export function SettingsSidebar({
               <button
                 key={goal.id}
                 onClick={() => onToggleGoal(goal.id as keyof typeof optimizationGoals)}
-                className={`w-full flex items-center gap-3 py-2.5 px-3 rounded-lg border transition-all text-left ${
+                className={`w-full flex items-center gap-3 py-2.5 px-3 rounded-xl border transition-all text-left ${
                   isChecked 
                     ? "border-slate-300 bg-slate-50" 
                     : "border-slate-200 hover:border-slate-300"
@@ -197,7 +197,7 @@ export function SettingsSidebar({
       <button
         onClick={onAnalyze}
         disabled={isDisabled}
-        className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-100 disabled:text-slate-400 text-white text-sm font-medium rounded-lg transition-colors"
+        className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-100 disabled:text-slate-400 text-white text-sm font-medium rounded-xl transition-colors"
       >
         {isAnalyzing ? "Analyzing..." : "Analyze Proposal"}
       </button>

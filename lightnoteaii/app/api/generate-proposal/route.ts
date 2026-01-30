@@ -21,6 +21,50 @@ function safeParseJSON(value: string | null | undefined, defaultValue: any = {})
   }
 }
 
+function normalizeInput(value: any): string {
+  if (value === null || value === undefined) return ""
+  if (typeof value === "string") return value.trim()
+  return String(value).trim()
+}
+
+function mergeContextFromFormData(context: any, formData: any) {
+  if (!formData) return context
+  const merged = { ...context }
+
+  const mappings: Array<[string, any]> = [
+    ["client_name", formData.clientName || formData.client_name],
+    ["client_company", formData.clientCompany || formData.client_company],
+    ["prepared_by", formData.preparedBy || formData.prepared_by],
+    ["company_name", formData.companyName || formData.company_name],
+    ["prepared_by_email", formData.preparedByEmail || formData.prepared_by_email],
+    ["proposal_type", formData.proposalType || formData.proposal_type],
+    ["tone", formData.tone],
+    ["template", formData.template],
+    ["client_industry", formData.clientIndustry || formData.client_industry],
+    ["industry", formData.industry || formData.clientIndustry || formData.client_industry],
+    ["problem_statement", formData.problem || formData.problem_statement || formData.problemStatement],
+    ["problem", formData.problem || formData.problem_statement || formData.problemStatement],
+    ["solution", formData.solution],
+    ["goal", formData.goal || formData.goals],
+    ["goals", formData.goals || formData.goal],
+    ["budget", formData.budget],
+    ["timeline", formData.timeline],
+    ["deliverables", formData.deliverables],
+    ["unique_value", formData.uniqueValue || formData.unique_value],
+    ["additional_context", formData.additionalContext || formData.additional_context],
+    ["proposal_pages", formData.proposalPages || formData.proposal_pages],
+  ]
+
+  for (const [key, value] of mappings) {
+    const normalized = normalizeInput(value)
+    if (normalized) {
+      merged[key] = normalized
+    }
+  }
+
+  return merged
+}
+
 function toStringArray(value: any): string[] {
   if (!value) return []
   if (Array.isArray(value)) {
@@ -90,19 +134,25 @@ export async function POST(req: Request) {
       const mappedContext = {
         client_name: formData.clientName || formData.client_name || "",
         client_company: formData.clientCompany || formData.client_company || "",
+        prepared_by: formData.preparedBy || formData.prepared_by || "",
+        company_name: formData.companyName || formData.company_name || "",
+        prepared_by_email: formData.preparedByEmail || formData.prepared_by_email || "",
         proposal_type: formData.proposalType || formData.proposal_type || "Business Proposal",
         tone: formData.tone || "professional",
         template: formData.template || "professional",
-        industry: formData.industry || formData.clientIndustry || "general",
+        client_industry: formData.clientIndustry || formData.client_industry || "",
+        industry: formData.industry || formData.clientIndustry || formData.client_industry || "general",
         problem_statement: problemValue,
         problem: problemValue,
         solution: formData.solution || "",
+        goal: formData.goal || formData.goals || "",
         goals: formData.goals || "",
-        budget: formData.budget || "To be discussed",
-        timeline: formData.timeline || "To be determined",
+        budget: formData.budget || "",
+        timeline: formData.timeline || "",
         deliverables: formData.deliverables || "",
         unique_value: formData.uniqueValue || formData.unique_value || "",
         additional_context: formData.additionalContext || formData.additional_context || "",
+        proposal_pages: formData.proposalPages || formData.proposal_pages || "",
       }
 
       const hasProblem = (mappedContext.problem_statement || "").trim().length >= 1
@@ -230,12 +280,14 @@ export async function POST(req: Request) {
         }
       }
 
+      const mergedContext = mergeContextFromFormData(updatedContext, formData)
+
       debugStep = "mode_b_update"
       const { error: updateError } = await supabase
         .from("proposals")
         .update({
           original_content: JSON.stringify({
-            context: updatedContext,
+            context: mergedContext,
             clarifications: updatedClarifications,
             generation_status: "ready",
           }),
@@ -293,7 +345,12 @@ export async function POST(req: Request) {
     }
 
     const proposalData = safeParseJSON(proposalForGen.original_content, {})
-    const context = proposalData.context || proposalData
+    const context = mergeContextFromFormData(proposalData.context || proposalData, formData)
+    const latestFormData = formData || {}
+    const latestTimeline = normalizeInput(latestFormData.timeline || context.timeline)
+    const latestBudget = normalizeInput(latestFormData.budget || context.budget)
+    const latestProblem = normalizeInput(latestFormData.problem || context.problem_statement || context.problem)
+    const latestSolution = normalizeInput(latestFormData.solution || context.solution)
 
     // STEP 7: Update status
     debugStep = "update_status_generating"
@@ -313,7 +370,14 @@ export async function POST(req: Request) {
     const { generateWithRetry } = await import("@/lib/gemini")
 
     debugStep = "ai_build_prompt"
-    const prompt = buildFullProposalPrompt(context)
+    const prompt = buildFullProposalPrompt({
+      ...context,
+      timeline: latestTimeline || context.timeline,
+      budget: latestBudget || context.budget,
+      problem_statement: latestProblem || context.problem_statement,
+      problem: latestProblem || context.problem,
+      solution: latestSolution || context.solution,
+    })
 
     debugStep = "ai_call"
     let generatedSections: Record<string, string>
@@ -363,6 +427,50 @@ export async function POST(req: Request) {
       }
     }
 
+    // Enforce user-provided timeline/budget to avoid mismatches
+    const userTimeline = (latestTimeline || context.timeline || "").toString().trim()
+    if (userTimeline) {
+      generatedSections.timeline = `**Project Timeline: ${userTimeline}**\n\nAll phases below fit within ${userTimeline}.`
+      if (generatedSections.solution) {
+        const timelinePattern = /(Week\s*\d+(-\d+)?|First\s*\d+\s*weeks?|Second\s*\d+\s*weeks?|Third\s*\d+\s*weeks?)/gi
+        generatedSections.solution =
+          `**Timeline Commitment:** ${userTimeline}\n\n` +
+          generatedSections.solution.replace(timelinePattern, userTimeline)
+      }
+    }
+
+    const userBudget = (latestBudget || context.budget || "").toString().trim()
+    if (userBudget) {
+      generatedSections.investment = `**Investment: ${userBudget}**\n\nThis reflects the budget you provided.`
+    }
+
+    // Ensure the user's exact problem/solution phrasing is reflected
+    const inputProblem = normalizeInput(latestProblem || context.problem_statement || context.problem)
+    if (inputProblem && !generatedSections.problem_statement.toLowerCase().includes(inputProblem.toLowerCase())) {
+      generatedSections.problem_statement =
+        `${generatedSections.problem_statement}\n\nClient notes: ${inputProblem}`.trim()
+    }
+
+    const inputSolution = normalizeInput(latestSolution || context.solution)
+    if (inputSolution && !generatedSections.solution.toLowerCase().includes(inputSolution.toLowerCase())) {
+      generatedSections.solution =
+        `${generatedSections.solution}\n\nClient approach: ${inputSolution}`.trim()
+    }
+
+    const clientCompanyName = normalizeInput(context.client_company || context.client_name)
+    if (clientCompanyName && !generatedSections.executive_summary.toLowerCase().includes(clientCompanyName.toLowerCase())) {
+      generatedSections.executive_summary = `${clientCompanyName}: ${generatedSections.executive_summary}`.trim()
+    }
+
+    const industryName = normalizeInput(context.industry || context.client_industry)
+    if (
+      industryName &&
+      !["other", "general"].includes(industryName.toLowerCase()) &&
+      !generatedSections.executive_summary.toLowerCase().includes(industryName.toLowerCase())
+    ) {
+      generatedSections.executive_summary = `${generatedSections.executive_summary}\n\nThis proposal is tailored for the ${industryName} sector.`
+    }
+
     // STEP 10: Save
     debugStep = "save_final"
     const formattedContent = formatSectionsAsContent(generatedSections)
@@ -387,6 +495,8 @@ export async function POST(req: Request) {
 
     const clientName = context.client_name || context.clientName || formData?.clientName || "Client"
     const clientCompany = context.client_company || context.clientCompany || formData?.clientCompany || "Company"
+    const preparedBy = context.prepared_by || formData?.preparedBy || "Your Name"
+    const companyName = context.company_name || formData?.companyName || ""
     const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
 
     return Response.json({
@@ -404,9 +514,10 @@ export async function POST(req: Request) {
         metadata: {
           preparedFor: clientName,
           company: clientCompany,
-          preparedBy: "Your Name",
+          preparedBy,
+          companyName,
           date: today,
-          industry: context.industry || formData?.industry || "Business Services",
+          industry: context.industry || context.client_industry || formData?.industry || formData?.clientIndustry || "Business Services",
         },
       },
       savedProposal: { id: currentProposalId },
@@ -434,8 +545,8 @@ export async function POST(req: Request) {
 function buildFullProposalPrompt(context: any): string {
   const clientName = context.client_name || context.clientName || "the client"
   const clientCompany = context.client_company || context.clientCompany || ""
-  const industry = context.industry || "general"
-  const businessGoal = context.goal || context.businessGoal || "grow their business"
+  const industry = context.industry || context.client_industry || "general"
+  const businessGoal = context.goal || context.goals || context.businessGoal || "grow their business"
   const problem = context.problem_statement || context.problem || ""
   const solution = context.solution || ""
   const budget = context.budget || ""
@@ -443,6 +554,7 @@ function buildFullProposalPrompt(context: any): string {
   const tone = context.tone || "Professional"
   const additionalContext = context.additional_context || ""
   const proposalType = context.proposal_type || context.proposalType || ""
+  const proposalPages = context.proposal_pages || context.proposalPages || ""
 
   const websitePages = context.websitePages || context.website_pages || ""
   const websiteFeatures = context.websiteFeatures || context.website_features || ""
@@ -456,32 +568,40 @@ function buildFullProposalPrompt(context: any): string {
   const problemLower = problem.toLowerCase()
   const solutionLower = solution.toLowerCase()
 
-  // Website project detection - be VERY aggressive
-  const isWebsiteProject =
-    // Direct website mentions
+  // Website project detection - be conservative to avoid misclassifying software/product work.
+  const hasExplicitWebsiteScope =
     proposalTypeLower.includes("website") ||
-    problemLower.includes("website") ||
-    solutionLower.includes("website") ||
-    problemLower.includes("online presence") ||
-    problemLower.includes("web design") ||
-    // Restaurant/hospitality industry (they almost always need websites)
-    industryLower.includes("restaurant") ||
-    industryLower.includes("hospitality") ||
-    industryLower.includes("food") ||
-    industryLower.includes("dining") ||
-    industryLower.includes("cafe") ||
-    industryLower.includes("bar") ||
-    // Other local businesses that typically need websites
-    industryLower.includes("retail") ||
-    industryLower.includes("salon") ||
-    industryLower.includes("spa") ||
-    industryLower.includes("fitness") ||
-    industryLower.includes("gym") ||
-    industryLower.includes("real estate") ||
-    // Website-specific data was collected
+    proposalTypeLower.includes("web design") ||
+    proposalTypeLower.includes("web") ||
     websitePages !== "" ||
     websiteFeatures !== "" ||
     primaryAction !== ""
+
+  const hasStrongWebsiteSignals =
+    problemLower.includes("website redesign") ||
+    problemLower.includes("new website") ||
+    solutionLower.includes("website redesign") ||
+    solutionLower.includes("new website") ||
+    solutionLower.includes("landing page") ||
+    solutionLower.includes("web design")
+
+  const industryLikelyWebsite = [
+    "restaurant",
+    "hospitality",
+    "food",
+    "dining",
+    "cafe",
+    "bar",
+    "retail",
+    "salon",
+    "spa",
+    "fitness",
+    "gym",
+    "real estate",
+  ].some((key) => industryLower.includes(key))
+
+  const isWebsiteProject =
+    hasExplicitWebsiteScope || (hasStrongWebsiteSignals && industryLikelyWebsite)
 
   // Removed debug console.log at line 486-500
 
@@ -534,6 +654,7 @@ function buildFullProposalPrompt(context: any): string {
       solution,
       budget,
       timeline,
+      proposalPages,
       tone,
       additionalContext,
       websitePages,
@@ -555,6 +676,7 @@ function buildFullProposalPrompt(context: any): string {
     solution,
     budget,
     timeline,
+    proposalPages,
     tone,
     additionalContext,
     industryContext,
@@ -572,6 +694,7 @@ function buildWebsiteProposalPrompt(ctx: any): string {
     solution,
     budget,
     timeline,
+    proposalPages,
     primaryAction,
     industryContext,
     goalContext,
@@ -600,14 +723,21 @@ REQUIRED - USE THESE INSTEAD:
 - Specific USER ACTIONS: "fill out the form", "tap to call", "make a reservation"
 - Specific OUTCOMES: "more phone calls", "more reservations", "more walk-ins"
 
-**CLIENT CONTEXT:**
-- Business: ${clientDisplay}
-- Industry: ${industry}
-- Their Problem: ${problem || industryContext.problemExamples[0]}
-- What They Want: A website that helps them ${businessGoal.toLowerCase()}
-- Primary Goal: Get visitors to ${primaryActionText}
-- Budget: ${budget || "To be discussed"}
-- Timeline: ${timeline || "4-6 weeks"}
+  **CLIENT CONTEXT:**
+  - Business: ${clientDisplay}
+  - Industry: ${industry}
+  - Their Problem: ${problem || industryContext.problemExamples[0]}
+  - What They Want: A website that helps them ${businessGoal.toLowerCase()}
+  - Primary Goal: Get visitors to ${primaryActionText}
+  - Budget: ${budget || "To be discussed"}
+  - Timeline: ${timeline || "4-6 weeks"}
+  - Target Length: ${proposalPages || "1"} page(s)
+
+IMPORTANT CONSTRAINTS:
+- If a timeline is provided, use it exactly as written. Do NOT invent week ranges.
+- If a budget is provided, use it exactly as written. Do NOT replace it with placeholders.
+- Match the target length. If more than 1 page is requested, expand detail and examples to fit.
+- Use the user's exact problem and solution phrasing at least once (expand around it, but don't replace it).
 
 **THEIR CUSTOMERS:**
 ${industryContext.customerLanguage}
@@ -748,11 +878,16 @@ function buildConsultingProposalPrompt(ctx: any): string {
     solution,
     budget,
     timeline,
+    proposalPages,
     tone,
     additionalContext,
     industryContext,
     goalContext,
   } = ctx
+
+  const phase1Timing = timeline ? `Within ${timeline}` : "Week 1-2"
+  const phase2Timing = timeline ? `Within ${timeline}` : "Week 3-4"
+  const phase3Timing = timeline ? `Within ${timeline}` : "Week 5-6"
 
   // Format specific deliverables for the prompt
   const deliverablesListForPrompt = industryContext.specificDeliverables
@@ -783,6 +918,10 @@ BANNED (instant failure if used):
 
 REQUIRED instead:
 - Speak in terms of ${industry} customers (${industryContext.customerLanguage.split(",")[0]})
+- If a timeline is provided, use it exactly as written. Do NOT invent week ranges.
+- If a budget is provided, use it exactly as written. Do NOT replace it with placeholders.
+- Use the user's exact problem and solution phrasing at least once (expand around it, but don't replace it).
+- Match the target length. If more than 1 page is requested, expand detail and examples to fit.
 - Reference real problems: ${problemExamplesForPrompt}
 - Use concrete specifics, not abstract benefits
 
@@ -793,6 +932,7 @@ REQUIRED instead:
 - Their Situation: ${situationText}
 - Their Budget: ${budget || "To be discussed based on scope"}
 - Their Timeline: ${timeline || "Standard project timeline"}
+- Target Length: ${proposalPages || "1"} page(s)
 - Tone: ${tone}
 ${additionalContext ? `- Additional Context: ${additionalContext}` : ""}
 
@@ -822,7 +962,7 @@ ${additionalContext ? `- Additional Context: ${additionalContext}` : ""}
 
   "solution": "[Use this EXACT structure with headers. Each phase should be 3-4 bullet points MAX.]
   
-  **Phase 1: ${industryContext.phase1Name}** (${timeline ? "Week 1-2" : "First 2 weeks"})
+  **Phase 1: ${industryContext.phase1Name}** (${phase1Timing})
   
   What we do:
   - [Specific action 1]
@@ -830,7 +970,7 @@ ${additionalContext ? `- Additional Context: ${additionalContext}` : ""}
   
   What you'll have: [Tangible output they can see/use]
   
-  **Phase 2: ${industryContext.phase2Name}** (${timeline ? "Week 3-4" : "Week 3-4"})
+  **Phase 2: ${industryContext.phase2Name}** (${phase2Timing})
   
   What we build:
   - [Specific deliverable 1]
@@ -839,7 +979,7 @@ ${additionalContext ? `- Additional Context: ${additionalContext}` : ""}
   
   What you'll have: [Tangible output]
   
-  **Phase 3: ${industryContext.phase3Name}** (${timeline ? "Week 5-6" : "Week 5-6"})
+  **Phase 3: ${industryContext.phase3Name}** (${phase3Timing})
   
   What we deliver:
   - [Final deliverable]

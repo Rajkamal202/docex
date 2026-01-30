@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { GoogleGenerativeAI } from "@google/generative-ai"
+import { GoogleGenAI } from "@google/genai"
 
 // Max duration for file processing
 export const maxDuration = 60
@@ -11,13 +11,12 @@ const SUPPORTED_TYPES = {
 } as const
 
 async function extractTextFromPDFWithGemini(buffer: ArrayBuffer, fileName: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = process.env.LN_GEMINI_API_KEY
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY not configured")
+    throw new Error("LN_GEMINI_API_KEY not configured")
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
+  const genAI = new GoogleGenAI({ apiKey })
 
   // Convert buffer to base64
   const uint8Array = new Uint8Array(buffer)
@@ -33,18 +32,20 @@ Do not add any commentary, explanations, or markdown formatting.
 Do not summarize - extract the complete text verbatim.
 If there are headers, paragraphs, lists, or sections, preserve them with appropriate line breaks.`
 
-  const result = await model.generateContent([
-    {
-      inlineData: {
-        mimeType: "application/pdf",
-        data: base64Data,
+  const response = await genAI.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: [
+      {
+        inlineData: {
+          mimeType: "application/pdf",
+          data: base64Data,
+        },
       },
-    },
-    { text: prompt },
-  ])
+      { text: prompt },
+    ],
+  })
 
-  const response = result.response
-  const text = response.text()
+  const text = typeof response.text === "function" ? response.text() : response.text
 
   if (!text || text.length < 10) {
     throw new Error("Could not extract text from PDF")

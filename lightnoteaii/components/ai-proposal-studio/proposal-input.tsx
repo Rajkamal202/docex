@@ -218,11 +218,14 @@ export function ProposalInput({ content, onChange, isAnalyzing }: ProposalInputP
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="card-primary overflow-hidden"
+      className="card-primary overflow-hidden rounded-2xl shadow-sm"
     >
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-slate-900">Your Proposal</h2>
+      <div className="px-6 py-5 border-b border-slate-100/80 bg-slate-50/80 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Proposal Draft</h2>
+          <p className="text-xs text-slate-500">Paste text or upload a PDF/DOCX/TXT to start the analysis.</p>
+        </div>
         <div className="flex items-center gap-2">
           <input
             ref={fileInputRef}
@@ -294,7 +297,7 @@ export function ProposalInput({ content, onChange, isAnalyzing }: ProposalInputP
       </AnimatePresence>
 
       {/* Text Area with drag & drop zone */}
-      <div className="relative" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
+      <div className="relative bg-white" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
         {isProcessing && (
           <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-10">
             <div className="flex flex-col items-center gap-3">
@@ -314,27 +317,27 @@ export function ProposalInput({ content, onChange, isAnalyzing }: ProposalInputP
           onChange={(e) => onChange(e.target.value)}
           onPaste={handlePaste}
           placeholder="Paste your proposal content here..."
-          className="w-full min-h-[450px] p-5 text-slate-800 placeholder:text-slate-300 resize-none focus:outline-none text-sm leading-relaxed font-normal"
+          className="w-full min-h-[460px] p-6 text-slate-800 placeholder:text-slate-300 resize-none bg-white focus:outline-none text-sm leading-relaxed font-normal"
           disabled={isProcessing}
         />
 
         {!content && !isProcessing && (
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-            <div className="text-center opacity-40">
-              <p className="text-sm text-slate-400">Drop a file or paste content</p>
+            <div className="text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+                <FileText className="h-6 w-6" />
+              </div>
+              <p className="text-sm font-medium text-slate-400">Drop a file or paste content</p>
+              <p className="mt-1 text-xs text-slate-300">Supports PDF, DOCX, or TXT</p>
             </div>
           </div>
         )}
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between">
-        <div className="text-xs text-slate-400">
-          {wordCount.toLocaleString()} words
-        </div>
-        <div className="text-xs text-slate-400">
-          {charCount < 50 && <span>{50 - charCount} more characters needed</span>}
-        </div>
+      <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+        <div>{wordCount.toLocaleString()} words</div>
+        <div>{charCount < 50 ? `${50 - charCount} more characters needed` : "Ready for analysis"}</div>
       </div>
     </motion.div>
   )

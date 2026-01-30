@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
+import { GoogleGenAI } from "@google/genai"
 import { type NextRequest, NextResponse } from "next/server"
 
 // API key rotation
@@ -27,8 +27,7 @@ export async function POST(req: NextRequest) {
     }
 
     const apiKey = getNextApiKey()
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" })
+    const genAI = new GoogleGenAI({ apiKey })
 
     const prompt = `Analyze the following job posting or project description and extract relevant information for creating a business proposal.
 
@@ -62,8 +61,11 @@ Rules:
 - Keep the problem description concise but comprehensive
 - The solution should be a brief 1-2 sentence approach`
 
-    const result = await model.generateContent(prompt)
-    const responseText = result.response.text()
+    const response = await genAI.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+    })
+    const responseText = typeof response.text === "function" ? response.text() : response.text
 
     // Parse JSON from response
     let extractedData

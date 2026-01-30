@@ -32,6 +32,8 @@ interface CreditState {
   hasAddedPayment: boolean
   isLoading: boolean
   userId: string | null
+  tableMissing: boolean
+  error: string | null
 }
 
 interface CreditContextType extends CreditState {
@@ -59,6 +61,8 @@ const INITIAL_STATE: CreditState = {
   hasAddedPayment: false,
   isLoading: true,
   userId: null,
+  tableMissing: false,
+  error: null,
 }
 
 export function CreditProvider({ children }: { children: ReactNode }) {
@@ -129,6 +133,9 @@ export function CreditProvider({ children }: { children: ReactNode }) {
           .limit(50),
       ])
 
+      if (creditResult.error) throw creditResult.error
+      if (transactionsResult.error) throw transactionsResult.error
+
       const transactions: CreditTransaction[] = (transactionsResult.data || []).map((t) => ({
         id: t.id,
         type: t.amount > 0 ? "credit" : "debit",
@@ -148,6 +155,8 @@ export function CreditProvider({ children }: { children: ReactNode }) {
           hasAddedPayment: false,
           isLoading: false,
           userId: user.id,
+          tableMissing: false,
+          error: null,
         })
       }
     } catch (error: unknown) {
@@ -169,7 +178,17 @@ export function CreditProvider({ children }: { children: ReactNode }) {
         console.error("Error fetching credits:", error)
       }
       if (mounted.current) {
-        setState((prev) => ({ ...prev, isLoading: false }))
+        const tableMissing =
+          errorMessage.includes("PGRST205") ||
+          errorMessage.includes("Could not find the table") ||
+          errorMessage.includes("credits") ||
+          errorMessage.includes("credit_transactions")
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          tableMissing,
+          error: errorMessage,
+        }))
       }
     } finally {
       fetchInProgress.current = false

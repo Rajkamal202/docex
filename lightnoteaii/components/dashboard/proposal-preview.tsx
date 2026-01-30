@@ -44,6 +44,7 @@ import {
   EnterpriseTemplate,
   FinancialTemplate,
   PartnershipTemplate,
+  PagedTemplate,
 } from "./templates"
 
 interface ProposalPreviewProps {
@@ -72,6 +73,7 @@ interface ProposalPreviewProps {
     preparedByEmail?: string
     summary?: string
     solution?: string
+    proposalPages?: number
     websitePages?: string
     websiteFeatures?: string[]
     primaryAction?: string
@@ -137,8 +139,12 @@ export function ProposalPreview({
     solution: aiProposal?.solution || collectedInfo?.solution || "",
     summary: aiProposal?.summary || collectedInfo?.summary || "",
     deliverables: aiProposal?.deliverables || collectedInfo?.deliverables || [],
-    timeline: aiProposal?.timeline || collectedInfo?.timeline || "",
-    budget: aiProposal?.investment || collectedInfo?.budget || "",
+    timeline: collectedInfo?.timeline?.trim()
+      ? collectedInfo.timeline
+      : aiProposal?.timeline || collectedInfo?.timeline || "",
+    budget: collectedInfo?.budget?.trim()
+      ? collectedInfo.budget
+      : aiProposal?.investment || collectedInfo?.budget || "",
     tone: collectedInfo?.tone || "professional",
     uniqueValue: collectedInfo?.uniqueValue || "",
     logo: collectedInfo?.logo || "",
@@ -147,10 +153,13 @@ export function ProposalPreview({
     preparedByEmail: collectedInfo?.preparedByEmail || "",
     whyUs: aiProposal?.whyUs || "",
     nextSteps: aiProposal?.nextSteps || [],
-    investment: aiProposal?.investment || collectedInfo?.budget || "",
+    investment: collectedInfo?.budget?.trim()
+      ? collectedInfo.budget
+      : aiProposal?.investment || collectedInfo?.budget || "",
     websitePages: collectedInfo?.websitePages || "",
     websiteFeatures: collectedInfo?.websiteFeatures || [],
     primaryAction: collectedInfo?.primaryAction || "",
+    proposalPages: collectedInfo?.proposalPages,
   }
 
   const safeBranding = {
@@ -211,7 +220,13 @@ export function ProposalPreview({
           return
         }
 
-        // First try proposal-ai-content (primary source)
+        // If there's no current/generated content, avoid showing stale data from localStorage.
+        if (!generatedContent && !previousContent) {
+          setAiSections(null)
+          return
+        }
+
+        // First try proposal-ai-content (primary source) ONLY when content exists
         const aiContent = localStorage.getItem("proposal-ai-content")
         if (aiContent) {
           const parsed = JSON.parse(aiContent)
@@ -405,8 +420,22 @@ export function ProposalPreview({
     return clone
   }
 
-  const isMultiPage = safeInfo.template === "project" || safeInfo.template === "client"
-  const totalPages = safeInfo.template === "project" ? 4 : safeInfo.template === "client" ? clientTemplatePages : 1
+  const requestedPagesRaw =
+    typeof safeInfo.proposalPages === "number" && safeInfo.proposalPages > 0 ? safeInfo.proposalPages : null
+  const requestedPages = requestedPagesRaw ? Math.min(requestedPagesRaw, 4) : null
+  const usePagedTemplate = requestedPages !== null && requestedPages > 1
+  const isMultiPage = usePagedTemplate || safeInfo.template === "project" || safeInfo.template === "client"
+  const totalPages = usePagedTemplate
+    ? requestedPages || 1
+    : safeInfo.template === "project"
+      ? 4
+      : safeInfo.template === "client"
+        ? clientTemplatePages
+        : 1
+
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, totalPages))
+  }, [totalPages])
 
   const handleCopy = async () => {
     const textContent = previewRef.current?.innerText || generatedContent || ""
@@ -640,6 +669,10 @@ export function ProposalPreview({
 
   const renderTemplate = (isFullPreview = false) => {
     const props = { ...templateProps, isFullPreview }
+
+    if (usePagedTemplate) {
+      return <PagedTemplate {...props} currentPage={currentPage} totalPages={totalPages} />
+    }
 
     switch (safeInfo.template) {
       case "classic":
